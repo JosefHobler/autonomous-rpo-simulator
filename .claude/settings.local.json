@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest -q)",
+      "PowerShell(python -m pytest -q 2>&1 | Select-Object -Last 40)",
+      "PowerShell(python -m pip install pytest numpy scipy --quiet 2>&1 | Select-Object -Last 10)",
+      "PowerShell(py *)",
+      "Bash(git check-ignore *)"
+    ]
+  }
+}

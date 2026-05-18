@@ -1,0 +1,5 @@
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+pytest>=7         # tests only
+pybind11>=2.10    # only needed if you want to build the C++ EKF core

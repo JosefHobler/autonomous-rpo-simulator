@@ -1,0 +1,113 @@
+# RPO Simulator
+
+Small end-to-end sim of a chaser doing a glideslope rendezvous with a target on a
+circular orbit. Truth dynamics, guidance, EKF, sensor model and CCSDS telemetry
+
+<img width="800" height="600" alt="approach" src="https://github.com/user-attachments/assets/1cc3262f-f4f0-4494-9f75-fd0dbefc2d23" />
+<br/>
+<img width="1548" height="1183" alt="summary" src="https://github.com/user-attachments/assets/55569033-a997-4362-8203-0a83624666d8" />
+
+What's included:
+
+- Clohessy–Wiltshire relative dynamics + the closed-form 6×6 STM. No matrix exponential.
+- Multi-impulse glideslope guidance (Hablani formulation). Waypoints aligned with the initial Line-of-Sight (LOS) vector, per-leg Δv from a CW two-point BVP.
+- Range / az / el sensor with Gaussian noise + analytical Jacobian.
+- EKF on the 6-element state vector. Pure Python by default; a header-only
+  C++ core with pybind11 bindings is available for better performance.
+- CCSDS 133.0-B-2 Space Packets (primary header, CDS short time, typed payloads).
+  Every truth/nav/sensor/guidance event gets emitted, written to `.bin`, and read
+  back to validate packet serialization and telemetry framing.
+- summary plot + 3D animation of the approach in LVLH.
+
+```
+rpo/
+  dynamics.py     CW system matrix + closed-form STM
+  guidance.py     glideslope planner (multi-impulse CW BVP)
+  measurements.py range/az/el sensor and Jacobian
+  ekf.py          EKF (auto-loads the C++ core if you built it)
+  ccsds.py        Space Packet header, CDS time, payload codecs
+  simulator.py    top-level loop
+  plotting.py     summary figure + 3D animation
+cpp/
+  include/rpo/ekf_core.hpp   header-only Eigen EKF (everything lives here)
+  src/pybindings.cpp         pybind11 module 'rpo._ekf_cpp'
+  tests/test_ekf_core.cpp    initial check, no Python needed
+  CMakeLists.txt             builds the initial check + the pybind11 module
+scripts/
+  run_sim.py                 'python scripts/run_sim.py'
+tests/                       pytest, 21 tests
+```
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+python scripts/run_sim.py --out out
+```
+
+Output:
+
+- `out/summary.png` — trajectory, EKF error envelopes, range/range-rate and a
+  cumulative-delta-v staircase.
+- `out/approach.gif` — 3D animation.
+- `out/telemetry.bin` — raw concatenated CCSDS packets.
+
+Inspect the telemetry:
+
+```python
+from rpo import ccsds
+pkts = ccsds.TelemetryStream.read("out/telemetry.bin")
+events = [p for p in pkts if p.apid == int(ccsds.APID.EVENT)]
+for e in events:
+    print(e.timestamp.seconds, ccsds.decode_event(e.payload))
+```
+
+## C++ EKF core (optional)
+
+The Python EKF gives the same numbers as the C++ one. Build the C++ core for (a) benchmarking, or
+(b) lifting the class straight into a flight-style codebase.
+
+```bash
+pip install pybind11
+EIGEN_INCLUDE_DIR=/usr/include/eigen3 pip install .
+```
+
+On Windows the included setup.py also probes
+`C:/vcpkg/installed/x64-windows/include/eigen3`. If you've got Eigen anywhere
+else, set `EIGEN_INCLUDE_DIR` explicitly.
+
+Once built, `ekf.build_default_filter` finds `rpo._ekf_cpp` on its own. Quick
+check:
+
+```python
+from rpo import ekf, dynamics
+import numpy as np
+n = dynamics.mean_motion(400e3)
+filt = ekf.build_default_filter(n, np.zeros(6))
+print(type(filt).__name__)   # PythonEKF or CppEKF
+```
+
+There's a standalone C++ initial check at `cpp/tests/test_ekf_core.cpp`:
+
+```bash
+cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=Release
+cmake --build cpp/build
+./cpp/build/ekf_smoke
+```
+
+## Conventions
+
+- **Frame**: LVLH on the target. x radial out, y along-track, z cross-track.
+- **State**: chaser pos+vel relative to the target, 6 elements, SI.
+- **Time**: simulator clock. t=0 at release. The CCSDS CDS time codes are
+  mission-relative.
+- **Thrust**: instantaneous impulses. The truth model takes the impulse exactly
+  and the EKF sees the same commanded delta-v.
+- **Sensor**: range / az / el in the chaser body frame, which we assume is aligned
+  with LVLH. Defaults: σ_range = 0.1 m, σ_bearing = 1 mrad.
+
+## Tests
+
+```bash
+pytest -q
+```

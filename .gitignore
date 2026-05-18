@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.dll
+*.egg-info/
+.eggs/
+build/
+dist/
+out/
+.pytest_cache/
+.venv/
+.env
+*.bin
+!cpp/**/*.bin
+
+# C++ build
+cpp/build/
+*.obj
+*.exe
+*.o
