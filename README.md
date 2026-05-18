@@ -3,9 +3,9 @@
 Small end-to-end sim of a chaser doing a glideslope rendezvous with a target on a
 circular orbit. Truth dynamics, guidance, EKF, sensor model and CCSDS telemetry
 
-<img width="800" height="600" alt="approach" src="https://github.com/user-attachments/assets/1cc3262f-f4f0-4494-9f75-fd0dbefc2d23" />
+<img width="800" height="600" alt="approach" src="https://github.com/user-attachments/assets/69ebeab3-358c-46fa-877f-c7e176c3751f" />
 <br/>
-<img width="1548" height="1183" alt="summary" src="https://github.com/user-attachments/assets/55569033-a997-4362-8203-0a83624666d8" />
+<img width="1544" height="1183" alt="summary" src="https://github.com/user-attachments/assets/017404ae-bc67-455f-846b-da520ce06552" />
 
 What's included:
 
