@@ -27,7 +27,8 @@ rpo/
   ekf.py          EKF (auto-loads the C++ core if you built it)
   ccsds.py        Space Packet header, CDS time, payload codecs
   simulator.py    top-level loop
-  plotting.py     summary figure + 3D animation
+  montecarlo.py   dispersed-IC campaign, parallel trials, NEES consistency
+  plotting.py     summary figure + 3D animation + MC campaign figure
 cpp/
   include/rpo/ekf_core.hpp   header-only Eigen EKF (everything lives here)
   src/pybindings.cpp         pybind11 module 'rpo._ekf_cpp'
@@ -35,7 +36,8 @@ cpp/
   CMakeLists.txt             builds the initial check + the pybind11 module
 scripts/
   run_sim.py                 'python scripts/run_sim.py'
-tests/                       pytest, 21 tests
+  run_mc.py                  'python scripts/run_mc.py' (Monte Carlo campaign)
+tests/                       pytest, 29 tests
 ```
 
 ## Quick start
@@ -60,6 +62,39 @@ pkts = ccsds.TelemetryStream.read("out/telemetry.bin")
 events = [p for p in pkts if p.apid == int(ccsds.APID.EVENT)]
 for e in events:
     print(e.timestamp.seconds, ccsds.decode_event(e.payload))
+```
+
+## Monte Carlo
+
+```bash
+python scripts/run_mc.py --trials 200 --workers 8 --out out
+```
+
+Disperses the initial relative state (1-sigma defaults: 20/20/10 m,
+0.02/0.02/0.01 m/s), reseeds the noise streams per trial, and runs the trials
+across a process pool. One integer seed fully determines a trial — the nav-init
+draw and the sensor noise are independent child streams of
+`SeedSequence(seed)` — so a campaign is reproducible.
+
+Output:
+
+- `out/mc_summary.png` — delta-v histogram + CDF, range closure with a 5-95 %
+  envelope, and the ensemble ANEES against its chi-square consistency band.
+- `out/mc_results.csv` — per-trial delta-v, capture, cone violation, RMS nav error.
+- `out/mc_summary.bin` — a single CCSDS `CAMPAIGN_SUMMARY` packet (capture rate,
+  delta-v percentiles, ANEES) framed like the rest of the telemetry.
+
+The headline analysis is **filter consistency**: with N independent runs the
+ensemble-averaged NEES is chi-square distributed, so it should sit inside
+`anees_bounds(N)`. Drifting above means the EKF is overconfident (P too small);
+below means it is conservative. Capture is judged at closest approach, since the
+sim coasts ~30 s past the terminal burn.
+
+```python
+from rpo import montecarlo as mc, simulator
+results = mc.run_campaign(mc.MCConfig(base=simulator.SimConfig(), n_trials=200))
+stats = mc.summarize(results)
+print(stats.capture_rate, stats.dv_p95, stats.anees_mean)
 ```
 
 ## C++ EKF core
