@@ -5,7 +5,11 @@
       "PowerShell(python -m pytest -q 2>&1 | Select-Object -Last 40)",
       "PowerShell(python -m pip install pytest numpy scipy --quiet 2>&1 | Select-Object -Last 10)",
       "PowerShell(py *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(py -m pytest -q)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)"
     ]
   }
 }

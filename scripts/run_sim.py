@@ -36,7 +36,6 @@ def main(argv=None):
         sensor=measurements.SensorParams(
             sigma_range=0.5,
             sigma_bearing=3e-3,
-            rng_seed=args.seed + 7,
         ),
         ekf_params=ekf.EKFParams(
             process_accel_psd=1e-5,

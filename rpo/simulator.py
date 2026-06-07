@@ -24,6 +24,9 @@ class SimConfig:
     sensor: measurements.SensorParams = field(default_factory=measurements.SensorParams)
     ekf_params: ekf.EKFParams = field(default_factory=ekf.EKFParams)
     rng_seed: int = 0
+    # Keep the full 6x6 covariance at every step (needed for NEES / Monte Carlo
+    # filter-consistency analysis). Off by default; only the diagonal is stored.
+    log_full_cov: bool = False
 
 
 @dataclass
@@ -37,11 +40,15 @@ class SimResult:
     delta_v_total: float
     config: SimConfig
     telemetry: ccsds.TelemetryStream
+    cov_full: np.ndarray | None = None   # (n_steps, 6, 6) when log_full_cov
 
 
 def run(config: SimConfig | None = None) -> SimResult:
     cfg = config or SimConfig()
-    rng = np.random.default_rng(cfg.rng_seed)
+    # One seed fully determines a trial. Spawn independent child streams so the
+    # nav-init draw and the sensor noise never share state across trials.
+    nav_seed, sensor_seed = np.random.SeedSequence(cfg.rng_seed).spawn(2)
+    rng = np.random.default_rng(nav_seed)
     n = dynamics.mean_motion(cfg.altitude_m)
 
     s_truth = cfg.initial_relative_state.astype(float).copy()
@@ -57,7 +64,7 @@ def run(config: SimConfig | None = None) -> SimResult:
     sensor = measurements.Sensor(measurements.SensorParams(
         sigma_range=cfg.sensor.sigma_range,
         sigma_bearing=cfg.sensor.sigma_bearing,
-        rng_seed=cfg.rng_seed + 1,
+        rng_seed=sensor_seed,
     ))
 
     # nav initialized off the truth with a deliberate offset
@@ -74,6 +81,7 @@ def run(config: SimConfig | None = None) -> SimResult:
     truth_log = np.zeros((n_steps, 6))
     est_log   = np.zeros((n_steps, 6))
     cov_log   = np.zeros((n_steps, 6))
+    cov_full_log = np.zeros((n_steps, 6, 6)) if cfg.log_full_cov else None
     meas_log: List[np.ndarray] = []
 
     pulses_remaining = list(plan.pulses)
@@ -99,6 +107,8 @@ def run(config: SimConfig | None = None) -> SimResult:
         truth_log[k] = s_truth
         est_log[k]   = filt.x
         cov_log[k]   = np.diag(filt.P)
+        if cov_full_log is not None:
+            cov_full_log[k] = filt.P
 
         tlm.emit(ccsds.APID.CHASER_TRUTH,
                  ccsds.encode_state(s_truth, dv_total), t)
@@ -126,4 +136,5 @@ def run(config: SimConfig | None = None) -> SimResult:
         delta_v_total=dv_total,
         config=cfg,
         telemetry=tlm,
+        cov_full=cov_full_log,
     )
