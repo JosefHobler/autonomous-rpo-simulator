@@ -137,6 +137,7 @@ class APID(IntEnum):
     CHASER_NAV   = 0x101
     SENSOR_MEAS  = 0x102
     GUIDANCE_CMD = 0x103
+    CAMPAIGN_SUMMARY = 0x200
     EVENT        = 0x1FF
 
 
@@ -166,6 +167,25 @@ def encode_guidance(dv):
 
 def decode_guidance(payload):
     return struct.unpack(">3d", payload)
+
+
+def encode_campaign(n_trials, capture_rate, dv_mean, dv_p95, dv_p99,
+                    anees_mean):
+    """End-of-campaign Monte Carlo summary: trial count + headline stats."""
+    return struct.pack(">I5d", int(n_trials), capture_rate,
+                       dv_mean, dv_p95, dv_p99, anees_mean)
+
+def decode_campaign(payload):
+    n_trials, capture_rate, dv_mean, dv_p95, dv_p99, anees_mean = \
+        struct.unpack(">I5d", payload)
+    return {
+        "n_trials": n_trials,
+        "capture_rate": capture_rate,
+        "dv_mean": dv_mean,
+        "dv_p95": dv_p95,
+        "dv_p99": dv_p99,
+        "anees_mean": anees_mean,
+    }
 
 
 def encode_event(text):

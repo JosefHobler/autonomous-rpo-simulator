@@ -9,7 +9,8 @@
       "Bash(py -m pytest -q)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "Bash(py -c ' *)"
     ]
   }
 }
