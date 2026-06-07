@@ -1,18 +1,18 @@
 # RPO Simulator
 
-Small end-to-end sim of a chaser doing a glideslope rendezvous with a target on a
+Small simulation of a chaser doing a glideslope rendezvous with a target on a
 circular orbit. Truth dynamics, guidance, EKF, sensor model and CCSDS telemetry
 
 <img width="800" height="600" alt="approach" src="https://github.com/user-attachments/assets/69ebeab3-358c-46fa-877f-c7e176c3751f" />
 <br/>
 <img width="1544" height="1183" alt="summary" src="https://github.com/user-attachments/assets/017404ae-bc67-455f-846b-da520ce06552" />
 
-What's included:
+What is included:
 
-- Clohessy–Wiltshire relative dynamics + the closed-form 6×6 STM. No matrix exponential.
-- Multi-impulse glideslope guidance (Hablani formulation). Waypoints aligned with the initial Line-of-Sight (LOS) vector, per-leg Δv from a CW two-point BVP.
+- Clohessy–Wiltshire relative dynamics.
+- Multi-impulse glideslope guidance (Hablani formulation). Waypoints aligned with the initial Line-of-Sight (LOS) vector, per-leg delta-v from a CW two-point BVP.
 - Range / az / el sensor with Gaussian noise + analytical Jacobian.
-- EKF on the 6-element state vector. Pure Python by default; a header-only
+- EKF on the 6-element state vector. Pure Python by default. A header-only
   C++ core with pybind11 bindings is available for better performance.
 - CCSDS 133.0-B-2 Space Packets (primary header, CDS short time, typed payloads).
   Every truth/nav/sensor/guidance event gets emitted, written to `.bin`, and read
@@ -62,9 +62,9 @@ for e in events:
     print(e.timestamp.seconds, ccsds.decode_event(e.payload))
 ```
 
-## C++ EKF core (optional)
+## C++ EKF core
 
-The Python EKF gives the same numbers as the C++ one. Build the C++ core for (a) benchmarking, or
+Python EKF gives the same numbers as the C++ one. I built the C++ core for (a) benchmarking, or
 (b) lifting the class straight into a flight-style codebase.
 
 ```bash
