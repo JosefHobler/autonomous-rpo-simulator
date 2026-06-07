@@ -10,7 +10,9 @@
       "Bash(git checkout *)",
       "Bash(git add *)",
       "Bash(git commit -q -m ' *)",
-      "Bash(py -c ' *)"
+      "Bash(py -c ' *)",
+      "Bash(py scripts/run_mc.py --trials 24 --workers 4 --out out_mc_test)",
+      "Bash(rm -rf out_mc_test)"
     ]
   }
 }

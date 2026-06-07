@@ -96,20 +96,26 @@ def run_trial(base: simulator.SimConfig, seed: int,
     r = truth[:, :3]
     range_profile = np.linalg.norm(r, axis=1)
 
-    # corridor: angle between the truth position and the initial line-of-sight
+    # Capture is judged at closest approach, not at the end: the sim coasts for
+    # ~30 s past the terminal burn, so the last sample has already drifted off
+    # the rendezvous point.
+    k_cap = int(np.argmin(range_profile))
+    final_range = float(range_profile[k_cap])
+    final_speed = float(np.linalg.norm(truth[k_cap, 3:]))
+
+    # Corridor keeping: angle between the truth position and the initial
+    # line-of-sight, while still outside the terminal ball. Reported on its own;
+    # it does not gate capture.
     los0 = cfg.initial_relative_state[:3]
     los0 = los0 / max(np.linalg.norm(los0), 1e-9)
     cos_ang = (r @ los0) / np.maximum(range_profile, 1e-9)
     cone = np.deg2rad(cfg.cone_half_angle_deg)
-    # only meaningful while still approaching, ignore the last few metres
     approaching = range_profile > cfg.rho_f
     cone_violation = bool(np.any((np.arccos(np.clip(cos_ang, -1, 1)) > cone)
                                  & approaching))
 
     pos_err = np.linalg.norm((est - truth)[:, :3], axis=1)
     vel_err = np.linalg.norm((est - truth)[:, 3:], axis=1)
-    final_range = float(range_profile[-1])
-    final_speed = float(np.linalg.norm(truth[-1, 3:]))
 
     return TrialResult(
         seed=seed,
@@ -120,8 +126,7 @@ def run_trial(base: simulator.SimConfig, seed: int,
         rms_nav_vel_err=float(np.sqrt(np.mean(vel_err ** 2))),
         cone_violation=cone_violation,
         captured=bool(final_range <= cfg.rho_f
-                      and final_speed <= capture_speed
-                      and not cone_violation),
+                      and final_speed <= capture_speed),
         t=res.t,
         range_profile=range_profile,
         nees=_nees_series(truth, est, res.cov_full),

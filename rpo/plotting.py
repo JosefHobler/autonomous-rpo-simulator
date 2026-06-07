@@ -89,6 +89,92 @@ def plot_summary(result, save_path: Optional[str] = None, show=False):
     return fig
 
 
+def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False):
+    """Monte Carlo campaign figure: delta-v hist + CDF, range spaghetti with a
+    percentile envelope, and ensemble ANEES against its chi-square bounds."""
+    import matplotlib.pyplot as plt
+
+    from . import montecarlo
+
+    dv = np.array([r.delta_v_total for r in results])
+
+    fig = plt.figure(figsize=(13, 9))
+    gs = fig.add_gridspec(2, 2, hspace=0.32, wspace=0.28)
+
+    # delta-v distribution
+    ax_dv = fig.add_subplot(gs[0, 0])
+    ax_dv.hist(dv, bins=min(40, max(8, len(dv) // 5)),
+               color="C4", alpha=0.8, edgecolor="white")
+    ax_dv.axvline(stats.dv_mean, color="k", lw=1.2, label=f"mean {stats.dv_mean:.3f}")
+    ax_dv.axvline(stats.dv_p95, color="C3", ls="--", lw=1.0, label=f"p95 {stats.dv_p95:.3f}")
+    ax_dv.axvline(stats.dv_p99, color="C1", ls=":", lw=1.0, label=f"p99 {stats.dv_p99:.3f}")
+    ax_dv.set_xlabel("total |dv| [m/s]")
+    ax_dv.set_ylabel("trials")
+    ax_dv.set_title("Delta-v distribution")
+    ax_dv.legend(fontsize=8)
+    ax_dv.grid(alpha=0.3)
+
+    # delta-v empirical CDF
+    ax_cdf = fig.add_subplot(gs[0, 1])
+    xs = np.sort(dv)
+    ax_cdf.plot(xs, np.linspace(0, 1, len(xs)), "C4-")
+    ax_cdf.axhline(0.95, color="C3", ls="--", lw=0.8)
+    ax_cdf.set_xlabel("total |dv| [m/s]")
+    ax_cdf.set_ylabel("P(dv <= x)")
+    ax_cdf.set_title("Delta-v CDF")
+    ax_cdf.grid(alpha=0.3)
+
+    # range spaghetti + percentile envelope (truncated to the shortest trial)
+    ax_rho = fig.add_subplot(gs[1, 0])
+    min_len = min(len(r.range_profile) for r in results)
+    t = results[0].t[:min_len]
+    rng_stack = np.vstack([r.range_profile[:min_len] for r in results])
+    for r in results[:60]:                       # cap drawn lines for clarity
+        ax_rho.plot(r.t[:min_len], r.range_profile[:min_len],
+                    color="C0", alpha=0.08, lw=0.8)
+    lo = np.percentile(rng_stack, 5, axis=0)
+    hi = np.percentile(rng_stack, 95, axis=0)
+    med = np.percentile(rng_stack, 50, axis=0)
+    ax_rho.fill_between(t, lo, hi, color="C0", alpha=0.25, label="5-95 %")
+    ax_rho.plot(t, med, "C0-", lw=1.6, label="median")
+    ax_rho.set_xlabel("time [s]")
+    ax_rho.set_ylabel("range [m]")
+    ax_rho.set_title(f"Closure ({len(results)} trials)")
+    ax_rho.legend(fontsize=8)
+    ax_rho.grid(alpha=0.3)
+
+    # ensemble ANEES vs chi-square consistency band
+    ax_nees = fig.add_subplot(gs[1, 1])
+    nees_stack = np.vstack([r.nees[:min_len] for r in results])
+    anees = np.nanmean(nees_stack, axis=0)
+    lo_b, hi_b = montecarlo.anees_bounds(len(results))
+    ax_nees.plot(t, anees, "C2-", lw=1.0, label="ensemble ANEES")
+    ax_nees.axhline(6, color="k", lw=0.8, label="dof = 6")
+    ax_nees.axhspan(lo_b, hi_b, color="C2", alpha=0.15,
+                    label=f"95% band [{lo_b:.2f}, {hi_b:.2f}]")
+    # the initial transient (large nav-init offset vs P0) dwarfs steady state;
+    # cap the axis so the consistency band stays readable
+    ax_nees.set_ylim(0, max(12.0, hi_b * 1.6))
+    ax_nees.set_xlabel("time [s]")
+    ax_nees.set_ylabel("ANEES")
+    ax_nees.set_title("Filter consistency")
+    ax_nees.legend(fontsize=8)
+    ax_nees.grid(alpha=0.3)
+
+    fig.suptitle(
+        f"Monte Carlo  -  capture {100*stats.capture_rate:.1f}%,  "
+        f"dv mean {stats.dv_mean:.3f} (p95 {stats.dv_p95:.3f}) m/s,  "
+        f"ANEES {stats.anees_mean:.2f}",
+        fontsize=12,
+    )
+
+    if save_path:
+        fig.savefig(save_path, dpi=140, bbox_inches="tight")
+    if show:
+        plt.show()
+    return fig
+
+
 def animate(result, save_path: Optional[str] = None, fps=30, stride=2, show=False):
     """3D animation of the chaser approaching the target in LVLH."""
     import matplotlib.pyplot as plt
