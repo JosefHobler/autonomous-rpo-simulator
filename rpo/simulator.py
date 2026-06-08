@@ -24,8 +24,6 @@ class SimConfig:
     sensor: measurements.SensorParams = field(default_factory=measurements.SensorParams)
     ekf_params: ekf.EKFParams = field(default_factory=ekf.EKFParams)
     rng_seed: int = 0
-    # Keep the full 6x6 covariance at every step (needed for NEES / Monte Carlo
-    # filter-consistency analysis). Off by default; only the diagonal is stored.
     log_full_cov: bool = False
 
 
@@ -40,13 +38,11 @@ class SimResult:
     delta_v_total: float
     config: SimConfig
     telemetry: ccsds.TelemetryStream
-    cov_full: np.ndarray | None = None   # (n_steps, 6, 6) when log_full_cov
+    cov_full: np.ndarray | None = None  
 
 
 def run(config: SimConfig | None = None) -> SimResult:
     cfg = config or SimConfig()
-    # One seed fully determines a trial. Spawn independent child streams so the
-    # nav-init draw and the sensor noise never share state across trials.
     nav_seed, sensor_seed = np.random.SeedSequence(cfg.rng_seed).spawn(2)
     rng = np.random.default_rng(nav_seed)
     n = dynamics.mean_motion(cfg.altitude_m)
@@ -67,7 +63,6 @@ def run(config: SimConfig | None = None) -> SimResult:
         rng_seed=sensor_seed,
     ))
 
-    # nav initialized off the truth with a deliberate offset
     sp, sv = cfg.ekf_params.initial_pos_sigma, cfg.ekf_params.initial_vel_sigma
     s_guess = s_truth + rng.normal(scale=[sp, sp, sp, sv, sv, sv])
     filt = ekf.build_default_filter(n, s_guess, cfg.ekf_params)
@@ -89,7 +84,6 @@ def run(config: SimConfig | None = None) -> SimResult:
     next_meas_t = 0.0
 
     for k, t in enumerate(t_grid):
-        # fire any guidance pulses that came due this tick
         while pulses_remaining and pulses_remaining[0].t <= t + 1e-9:
             p = pulses_remaining.pop(0)
             s_truth = dynamics.apply_impulse(s_truth, p.dv)

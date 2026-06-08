@@ -1,4 +1,4 @@
-"""Diagnostic plots + 3D approach animation for the RPO sim."""
+"""Diagnostic plots + 3D approach animation for the RPO simulation"""
 from __future__ import annotations
 
 from typing import Optional
@@ -20,7 +20,6 @@ def plot_summary(result, save_path: Optional[str] = None, show=False):
     fig = plt.figure(figsize=(13, 9))
     gs  = fig.add_gridspec(3, 3, hspace=0.4, wspace=0.35)
 
-    # trajectory in the orbital plane (radial vs along-track)
     ax_traj = fig.add_subplot(gs[:, 0])
     ax_traj.plot(truth[:, 1], truth[:, 0], "C0-",  lw=1.6, label="truth")
     ax_traj.plot(est[:, 1],   est[:, 0],   "C1--", lw=1.0, label="EKF")
@@ -31,12 +30,11 @@ def plot_summary(result, save_path: Optional[str] = None, show=False):
     ax_traj.set_xlabel("along-track y [m]")
     ax_traj.set_ylabel("radial x [m]")
     ax_traj.set_title("Relative trajectory (LVLH x-y)")
-    ax_traj.invert_xaxis()   # right-to-left closure reads better this way
+    ax_traj.invert_xaxis()   
     ax_traj.grid(alpha=0.3)
     ax_traj.legend(loc="best")
     ax_traj.set_aspect("equal", adjustable="datalim")
 
-    # position error with 3-sigma envelope
     for i, lbl in enumerate(("x", "y", "z")):
         ax = fig.add_subplot(gs[i, 1])
         ax.plot(t, err[:, i], "C0-", lw=1.0)
@@ -51,7 +49,6 @@ def plot_summary(result, save_path: Optional[str] = None, show=False):
         if i == 2:
             ax.set_xlabel("time [s]")
 
-    # range / range-rate / cumulative dv
     rho = np.linalg.norm(truth[:, :3], axis=1)
     rho_dot = np.gradient(rho, t)
 
@@ -90,8 +87,6 @@ def plot_summary(result, save_path: Optional[str] = None, show=False):
 
 
 def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False):
-    """Monte Carlo campaign figure: delta-v hist + CDF, range spaghetti with a
-    percentile envelope, and ensemble ANEES against its chi-square bounds."""
     import matplotlib.pyplot as plt
 
     from . import montecarlo
@@ -114,7 +109,7 @@ def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False)
     ax_dv.legend(fontsize=8)
     ax_dv.grid(alpha=0.3)
 
-    # delta-v empirical CDF
+    # delta-v CDF
     ax_cdf = fig.add_subplot(gs[0, 1])
     xs = np.sort(dv)
     ax_cdf.plot(xs, np.linspace(0, 1, len(xs)), "C4-")
@@ -124,12 +119,11 @@ def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False)
     ax_cdf.set_title("Delta-v CDF")
     ax_cdf.grid(alpha=0.3)
 
-    # range spaghetti + percentile envelope (truncated to the shortest trial)
     ax_rho = fig.add_subplot(gs[1, 0])
     min_len = min(len(r.range_profile) for r in results)
     t = results[0].t[:min_len]
     rng_stack = np.vstack([r.range_profile[:min_len] for r in results])
-    for r in results[:60]:                       # cap drawn lines for clarity
+    for r in results[:60]:                     
         ax_rho.plot(r.t[:min_len], r.range_profile[:min_len],
                     color="C0", alpha=0.08, lw=0.8)
     lo = np.percentile(rng_stack, 5, axis=0)
@@ -143,7 +137,6 @@ def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False)
     ax_rho.legend(fontsize=8)
     ax_rho.grid(alpha=0.3)
 
-    # ensemble ANEES vs chi-square consistency band
     ax_nees = fig.add_subplot(gs[1, 1])
     nees_stack = np.vstack([r.nees[:min_len] for r in results])
     anees = np.nanmean(nees_stack, axis=0)
@@ -152,8 +145,6 @@ def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False)
     ax_nees.axhline(6, color="k", lw=0.8, label="dof = 6")
     ax_nees.axhspan(lo_b, hi_b, color="C2", alpha=0.15,
                     label=f"95% band [{lo_b:.2f}, {hi_b:.2f}]")
-    # the initial transient (large nav-init offset vs P0) dwarfs steady state;
-    # cap the axis so the consistency band stays readable
     ax_nees.set_ylim(0, max(12.0, hi_b * 1.6))
     ax_nees.set_xlabel("time [s]")
     ax_nees.set_ylabel("ANEES")
@@ -176,10 +167,9 @@ def plot_mc_summary(results, stats, save_path: Optional[str] = None, show=False)
 
 
 def animate(result, save_path: Optional[str] = None, fps=30, stride=2, show=False):
-    """3D animation of the chaser approaching the target in LVLH."""
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
-    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  registers 3D projection
+    from mpl_toolkits.mplot3d import Axes3D 
 
     truth = result.truth[::stride]
     est   = result.estimate[::stride]

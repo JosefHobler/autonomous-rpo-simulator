@@ -105,7 +105,7 @@ class SpacePacket:
         sec = self.timestamp.to_bytes() if self.timestamp is not None else b""
         data = sec + self.payload
         if not data:
-            raise ValueError("CCSDS data field must be at least 1 octet")
+            raise ValueError("CCSDS data field must be at minimum 1 octet")
 
         ph = PrimaryHeader(
             apid=self.apid,
@@ -171,7 +171,6 @@ def decode_guidance(payload):
 
 def encode_campaign(n_trials, capture_rate, dv_mean, dv_p95, dv_p99,
                     anees_mean):
-    """End-of-campaign Monte Carlo summary: trial count + headline stats."""
     return struct.pack(">I5d", int(n_trials), capture_rate,
                        dv_mean, dv_p95, dv_p99, anees_mean)
 

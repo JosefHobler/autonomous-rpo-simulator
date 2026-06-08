@@ -4,7 +4,7 @@ from rpo import montecarlo as mc, simulator, ccsds
 
 
 def _small_config():
-    """A short, cheap base sim so the campaign tests stay fast."""
+    """A short base simulation so the campaign tests stay fast"""
     return simulator.SimConfig(
         altitude_m=400e3,
         dt_sim=1.0,
@@ -29,7 +29,6 @@ def test_different_seeds_diverge():
     cfg = _small_config()
     a = simulator.run(cfg)
     b = simulator.run(dataclasses.replace(cfg, rng_seed=1))
-    # same plan (deterministic), but noise-driven nav estimate differs
     assert not np.allclose(a.estimate, b.estimate)
 
 
@@ -40,7 +39,6 @@ def test_full_cov_logging_opt_in():
     res = simulator.run(dataclasses.replace(cfg, log_full_cov=True))
     assert res.cov_full is not None
     assert res.cov_full.shape == (len(res.t), 6, 6)
-    # diagonal must match the always-on cov_diag log
     assert np.allclose(np.diagonal(res.cov_full, axis1=1, axis2=2), res.cov_diag)
 
 
@@ -48,7 +46,7 @@ def test_campaign_serial_runs_and_summarizes():
     m = mc.MCConfig(base=_small_config(), n_trials=6, workers=1)
     results = mc.run_campaign(m)
     assert len(results) == 6
-    assert len({r.seed for r in results}) == 6        # distinct per-trial seeds
+    assert len({r.seed for r in results}) == 6
 
     stats = mc.summarize(results)
     assert stats.n_trials == 6
@@ -76,7 +74,6 @@ def test_dispersion_changes_initial_state():
 def test_anees_bounds_bracket_dof():
     lo, hi = mc.anees_bounds(n_trials=200, dof=6)
     assert lo < 6 < hi
-    # band tightens around the dof as the number of trials grows
     lo2, hi2 = mc.anees_bounds(n_trials=2000, dof=6)
     assert (hi2 - lo2) < (hi - lo)
 

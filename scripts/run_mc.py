@@ -1,5 +1,3 @@
-"""Monte Carlo RPO campaign: disperse the initial state, run many trials,
-report delta-v / capture / filter-consistency statistics."""
 from __future__ import annotations
 
 import argparse
@@ -70,17 +68,16 @@ def main(argv=None):
 
     lo, hi = montecarlo.anees_bounds(stats.n_trials)
     consistent = "ok" if lo <= stats.anees_mean <= hi else "OUT OF BAND"
-    print(f"  trials            : {stats.n_trials}")
-    print(f"  capture rate      : {100*stats.capture_rate:.1f}%")
-    print(f"  cone violations   : {100*stats.cone_violation_rate:.1f}%")
-    print(f"  dv mean / p95/p99 : {stats.dv_mean:.3f} / "
+    print(f"trials            : {stats.n_trials}")
+    print(f"capture rate      : {100*stats.capture_rate:.1f}%")
+    print(f"cone violations   : {100*stats.cone_violation_rate:.1f}%")
+    print(f"dv mean / p95/p99 : {stats.dv_mean:.3f} / "
           f"{stats.dv_p95:.3f} / {stats.dv_p99:.3f} m/s")
-    print(f"  final range mean  : {stats.final_range_mean:.2f} m")
-    print(f"  RMS nav pos err   : {stats.rms_nav_pos_err_mean:.3f} m")
-    print(f"  ANEES mean        : {stats.anees_mean:.2f} "
+    print(f"final range mean  : {stats.final_range_mean:.2f} m")
+    print(f"RMS nav pos err   : {stats.rms_nav_pos_err_mean:.3f} m")
+    print(f"ANEES mean        : {stats.anees_mean:.2f} "
           f"(band [{lo:.2f}, {hi:.2f}] -> {consistent})")
 
-    # round the campaign summary through CCSDS, same as the rest of the project
     tlm = ccsds.TelemetryStream()
     tlm.emit(ccsds.APID.CAMPAIGN_SUMMARY,
              ccsds.encode_campaign(stats.n_trials, stats.capture_rate,
@@ -91,7 +88,7 @@ def main(argv=None):
     tlm.write(tlm_path)
     decoded = ccsds.decode_campaign(
         ccsds.TelemetryStream.read(tlm_path)[0].payload)
-    print(f"  wrote {tlm_path}  (decoded back: capture={decoded['capture_rate']:.3f})")
+    print(f"wrote {tlm_path}  (decoded back: capture={decoded['capture_rate']:.3f})")
 
     csv_path = os.path.join(args.out, "mc_results.csv")
     with open(csv_path, "w") as f:
@@ -102,12 +99,12 @@ def main(argv=None):
                     f"{r.final_speed:.6f},{r.rms_nav_pos_err:.6f},"
                     f"{r.rms_nav_vel_err:.6f},{int(r.cone_violation)},"
                     f"{int(r.captured)}\n")
-    print(f"  wrote {csv_path}")
+    print(f"wrote {csv_path}")
 
     if not args.no_plot:
         png_path = os.path.join(args.out, "mc_summary.png")
         plotting.plot_mc_summary(results, stats, save_path=png_path)
-        print(f"  wrote {png_path}")
+        print(f"wrote {png_path}")
 
     return 0
 

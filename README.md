@@ -72,19 +72,17 @@ python scripts/run_mc.py --trials 200 --workers 8 --out out
 
 Disperses the initial relative state (1-sigma defaults: 20/20/10 m,
 0.02/0.02/0.01 m/s), reseeds the noise streams per trial, and runs the trials
-across a process pool. One integer seed fully determines a trial — the nav-init
-draw and the sensor noise are independent child streams of
-`SeedSequence(seed)` — so a campaign is reproducible.
+across a process pool. One integer seed fully determines a trial so a campaign is reproducible.
 
 Output:
 
-- `out/mc_summary.png` — delta-v histogram + CDF, range closure with a 5-95 %
+- `out/mc_summary.png`: delta-v histogram + CDF, range closure with a 5-95 %
   envelope, and the ensemble ANEES against its chi-square consistency band.
-- `out/mc_results.csv` — per-trial delta-v, capture, cone violation, RMS nav error.
-- `out/mc_summary.bin` — a single CCSDS `CAMPAIGN_SUMMARY` packet (capture rate,
+- `out/mc_results.csv`: per-trial delta-v, capture, cone violation, RMS nav error.
+- `out/mc_summary.bin`: a single CCSDS `CAMPAIGN_SUMMARY` packet (capture rate,
   delta-v percentiles, ANEES) framed like the rest of the telemetry.
 
-The headline analysis is **filter consistency**: with N independent runs the
+The headline analysis is filter consistency: with N independent runs the
 ensemble-averaged NEES is chi-square distributed, so it should sit inside
 `anees_bounds(N)`. Drifting above means the EKF is overconfident (P too small);
 below means it is conservative. Capture is judged at closest approach, since the
@@ -119,7 +117,7 @@ from rpo import ekf, dynamics
 import numpy as np
 n = dynamics.mean_motion(400e3)
 filt = ekf.build_default_filter(n, np.zeros(6))
-print(type(filt).__name__)   # PythonEKF or CppEKF
+print(type(filt).__name__)  
 ```
 
 There's a standalone C++ initial check at `cpp/tests/test_ekf_core.cpp`:
